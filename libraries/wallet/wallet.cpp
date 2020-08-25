@@ -1210,7 +1210,39 @@ public:
    }
 
    vector< signed_transaction > import_balance( string name_or_id, const vector<string>& wif_keys, bool broadcast );
+   void load_new_wallet(const fc::path& wallet, const string& password)
+   {
+	   try {
+		   FC_ASSERT(!is_locked());
+		   FC_ASSERT(wallet.string() != "");
+		   FC_ASSERT(!fc::exists(wallet.string()));
+		   auto t_wallet_data = fc::json::from_file(wallet.string()).as< wallet_data >();
+		   FC_ASSERT(t_wallet_data.chain_id == _chain_id,"wallet chain id does not match.");
 
+		   size_t n_wallet = _wallet.my_accounts.size();
+		   size_t n_new = t_wallet_data.my_accounts.size();
+		   //FC_ASSERT(n_wallet + n_new <= 100 , "there are too many accounts in these wallet files.");
+		   string password;
+		   FC_ASSERT(password.size() > 0);
+		   auto pw = fc::sha512::hash(password.c_str(), password.size());
+		   vector<char> decrypted = fc::aes_decrypt(pw, t_wallet_data.cipher_keys);
+		   auto pk = fc::raw::unpack<plain_keys>(decrypted);
+		   //my->_keys = std::move(pk.keys);
+		   //my->_crosschain_keys = std::move(pk.crosschain_keys);
+		   
+		   std::for_each(t_wallet_data.my_accounts.begin(), t_wallet_data.my_accounts.end(), [&pk,this](const account_object& obj) {
+			   const auto& acc_iter = _wallet.my_accounts.get<by_name>();
+			   auto iter = acc_iter.find(obj.name);
+			   string name = obj.name;
+			   if (iter != acc_iter.end() && iter->addr != obj.addr)
+			   {
+				   name = name + "_1";
+			   }
+			   import_key(name, pk.keys[obj.addr]);
+		   });
+		   save_wallet_file();
+	   }FC_CAPTURE_AND_RETHROW((wallet))
+   }
    bool load_wallet_file(string wallet_filename = "")
    {
 	   // TODO:  Merge imported wallet with existing wallet,
@@ -11654,6 +11686,13 @@ void wallet_api::witness_node_stop()
 {
     my->witness_node_stop();
 }
+
+void wallet_api::load_new_wallet(const fc::path & wallet, const string& password)
+{
+	my->load_new_wallet(wallet,password);
+}
+
+
 } } // graphene::wallet
 
 void fc::to_variant(const account_multi_index_type& accts, fc::variant& vo)

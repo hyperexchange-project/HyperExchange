@@ -1210,19 +1210,18 @@ public:
    }
 
    vector< signed_transaction > import_balance( string name_or_id, const vector<string>& wif_keys, bool broadcast );
-   void load_new_wallet(const fc::path& wallet, const string& password)
+   void load_new_wallet(const fc::path& wallet_file, const string& password)
    {
 	   try {
 		   FC_ASSERT(!is_locked());
-		   FC_ASSERT(wallet.string() != "");
-		   FC_ASSERT(!fc::exists(wallet.string()));
-		   auto t_wallet_data = fc::json::from_file(wallet.string()).as< wallet_data >();
+		   FC_ASSERT(wallet_file.string() != "");
+		   FC_ASSERT(fc::exists(wallet_file));
+		   auto t_wallet_data = fc::json::from_file(wallet_file).as< wallet_data >();
 		   FC_ASSERT(t_wallet_data.chain_id == _chain_id,"wallet chain id does not match.");
 
 		   size_t n_wallet = _wallet.my_accounts.size();
 		   size_t n_new = t_wallet_data.my_accounts.size();
 		   //FC_ASSERT(n_wallet + n_new <= 100 , "there are too many accounts in these wallet files.");
-		   string password;
 		   FC_ASSERT(password.size() > 0);
 		   auto pw = fc::sha512::hash(password.c_str(), password.size());
 		   vector<char> decrypted = fc::aes_decrypt(pw, t_wallet_data.cipher_keys);
@@ -1240,8 +1239,12 @@ public:
 			   }
 			   import_key(name, pk.keys[obj.addr]);
 		   });
+		   for (const auto& cross_key : pk.crosschain_keys)
+		   {
+			   _crosschain_keys.insert(cross_key);
+		   }
 		   save_wallet_file();
-	   }FC_CAPTURE_AND_RETHROW((wallet))
+	   }FC_CAPTURE_AND_RETHROW((wallet_file))
    }
    bool load_wallet_file(string wallet_filename = "")
    {

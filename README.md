@@ -17,5 +17,5 @@ This is a special blockchain network which aims to link all valued blockchain ne
 
 # Docs
 
-* [Build Docs](http://docs.hx.cash/wallets/hx-building/)
-* [HX Docs](http://docs.hx.cash)
+* [Build Docs](http://docs.hx.team/wallets/hx-building/)
+* [HX Docs](http://docs.hx.team)
